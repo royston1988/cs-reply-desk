@@ -59,6 +59,8 @@ export default function Page() {
   const [connected, setConnected] = useState(false);
   const [connError, setConnError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [source, setSource] = useState<"supabase" | "facebook" | "sample">("sample");
+  const [noiseFiltered, setNoiseFiltered] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +69,8 @@ export default function Page() {
       const data = await res.json();
       setConnected(Boolean(data.connected));
       setConnError(data.error ?? null);
+      setSource(data.source ?? "sample");
+      setNoiseFiltered(data.noiseFiltered ?? 0);
       setLive(data.connected ? data.conversations : null);
       if (data.connected && data.conversations?.length) {
         setSelectedId(data.conversations[0].id);
@@ -170,7 +174,17 @@ export default function Page() {
             {loading ? "Checking…" : "Refresh"}
           </button>
 
-          {connected ? (
+          {source === "supabase" ? (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-medium text-emerald-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Real customers from Supabase
+              {noiseFiltered > 0 && (
+                <span className="font-normal opacity-80">
+                  · {noiseFiltered} button-taps hidden
+                </span>
+              )}
+            </span>
+          ) : source === "facebook" ? (
             <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-medium text-emerald-800">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Live from Facebook
@@ -180,7 +194,7 @@ export default function Page() {
               title={connError ?? undefined}
               className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-medium text-amber-800"
             >
-              Sample messages — Facebook not connected
+              Sample messages — not connected yet
             </span>
           )}
 
