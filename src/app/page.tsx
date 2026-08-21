@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   AGENT,
   CONVERSATIONS,
@@ -22,10 +23,10 @@ const LANGS: { key: Lang; label: string }[] = [
   { key: "mix", label: "Mixed" },
 ];
 
-const NAV = [
+const NAV: { label: string; cn: string; active: boolean; href?: string }[] = [
   { label: "Inbox", cn: "收件箱", active: true },
   { label: "Cases", cn: "个案", active: false },
-  { label: "Scoreboard", cn: "计分板", active: false },
+  { label: "Scoreboard", cn: "计分板", active: false, href: "/scoreboard" },
   { label: "Answers", cn: "回复库", active: false },
 ];
 
@@ -252,22 +253,32 @@ export default function Page() {
         </div>
 
         <nav className="flex items-center gap-1">
-          {NAV.map((n) => (
-            <span
-              key={n.label}
-              className={[
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px]",
-                n.active ? "bg-neutral-100 font-semibold" : "text-neutral-400",
-              ].join(" ")}
-            >
-              {n.label}
-              {!n.active && (
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[9px] text-neutral-500">
-                  soon
-                </span>
-              )}
-            </span>
-          ))}
+          {NAV.map((n) =>
+            n.href ? (
+              <Link
+                key={n.label}
+                href={n.href}
+                className="rounded-lg px-3 py-1.5 text-[13px] text-neutral-600 hover:bg-neutral-100"
+              >
+                {n.label}
+              </Link>
+            ) : (
+              <span
+                key={n.label}
+                className={[
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px]",
+                  n.active ? "bg-neutral-100 font-semibold" : "text-neutral-400",
+                ].join(" ")}
+              >
+                {n.label}
+                {!n.active && (
+                  <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[9px] text-neutral-500">
+                    soon
+                  </span>
+                )}
+              </span>
+            ),
+          )}
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
