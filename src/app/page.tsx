@@ -25,7 +25,7 @@ const LANGS: { key: Lang; label: string }[] = [
 
 const NAV: { label: string; cn: string; active: boolean; href?: string }[] = [
   { label: "Inbox", cn: "收件箱", active: true },
-  { label: "Cases", cn: "个案", active: false },
+  { label: "Cases", cn: "个案", active: false, href: "/cases" },
   { label: "Scoreboard", cn: "计分板", active: false, href: "/scoreboard" },
   { label: "Answers", cn: "回复库", active: false },
 ];
