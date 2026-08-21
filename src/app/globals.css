@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --ac-ink: #171412;
+  --ac-line: #e7e2dd;
+  --ac-paper: #faf8f6;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ac-paper);
+  color: var(--ac-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, quiet scrollbars so three panels side by side stay calm */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d6cfc8 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #d6cfc8;
+  border-radius: 99px;
+}
