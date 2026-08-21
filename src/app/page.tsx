@@ -83,9 +83,53 @@ export default function Page() {
     }
   }, []);
 
+  // ---- PIN gate ----
+  const [gate, setGate] = useState<"checking" | "locked" | "open">("checking");
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [checkingPin, setCheckingPin] = useState(false);
+
   useEffect(() => {
-    load();
+    (async () => {
+      try {
+        const res = await fetch("/api/session", { cache: "no-store" });
+        const s = await res.json();
+        if (s.required && !s.signedIn) {
+          setGate("locked");
+          return;
+        }
+      } catch {
+        /* if the check fails, fall through and let the API decide */
+      }
+      setGate("open");
+      load();
+    })();
   }, [load]);
+
+  async function submitPin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pin.trim() || checkingPin) return;
+    setCheckingPin(true);
+    setPinError(null);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      if (res.ok) {
+        setGate("open");
+        setPin("");
+        load();
+      } else {
+        setPinError("That PIN isn't right. Try again.");
+      }
+    } catch {
+      setPinError("Could not reach the server.");
+    } finally {
+      setCheckingPin(false);
+    }
+  }
 
   const convos = connected && live?.length ? live : CONVERSATIONS;
 
@@ -125,6 +169,67 @@ export default function Page() {
     setOverrides((o) => ({ ...o, [selected.id]: "done" }));
     const next = visible.find((c) => c.id !== selected.id);
     if (next) setSelectedId(next.id);
+  }
+
+  if (gate === "checking") {
+    return (
+      <div className="flex h-screen items-center justify-center text-[13px] text-neutral-400">
+        Loading…
+      </div>
+    );
+  }
+
+  if (gate === "locked") {
+    return (
+      <div className="flex h-screen items-center justify-center px-6">
+        <form
+          onSubmit={submitPin}
+          className="w-full max-w-sm rounded-2xl border border-[var(--ac-line)] bg-white p-8 shadow-[0_2px_12px_rgba(0,0,0,0.05)]"
+        >
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--ac-ink)] text-[14px] font-semibold text-white">
+              AC
+            </div>
+            <div className="leading-tight">
+              <div className="text-[16px] font-semibold tracking-tight">Reply Desk</div>
+              <div className="text-[11px] text-neutral-500">Ample Couture · Customer Service</div>
+            </div>
+          </div>
+
+          <label className="mb-1.5 block text-[13px] font-medium">
+            Enter PIN 输入密码
+          </label>
+          <input
+            type="password"
+            value={pin}
+            onChange={(e) => {
+              setPin(e.target.value);
+              setPinError(null);
+            }}
+            autoFocus
+            inputMode="text"
+            placeholder="••••••••"
+            className="w-full rounded-xl border-2 border-[var(--ac-line)] bg-neutral-50 px-4 py-3 text-[15px] tracking-widest outline-none focus:border-neutral-400 focus:bg-white"
+          />
+
+          {pinError && (
+            <p className="mt-2 text-[12px] font-medium text-red-600">{pinError}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={!pin.trim() || checkingPin}
+            className="mt-4 w-full rounded-xl bg-[var(--ac-ink)] px-4 py-3 text-[14px] font-semibold text-white hover:opacity-90 disabled:opacity-30"
+          >
+            {checkingPin ? "Checking…" : "Open 进入"}
+          </button>
+
+          <p className="mt-4 text-center text-[11px] leading-relaxed text-neutral-400">
+            Staff only. Customer conversations are private.
+          </p>
+        </form>
+      </div>
+    );
   }
 
   if (!selected) {
