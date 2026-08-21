@@ -150,6 +150,42 @@ export async function fetchCases(limit = 1000): Promise<CasesResult> {
   };
 }
 
+/**
+ * Facts about one case, read from the conversation itself.
+ *
+ * Points are decided from THIS, never from what the browser claims. Otherwise
+ * anyone could close an untouched case and claim the reward for helping.
+ */
+export async function getCaseFacts(
+  convId: string,
+): Promise<{ kind: CaseRow["kind"] | null; answered: boolean; waitedMins: number }> {
+  const supabase = client();
+  if (!supabase) return { kind: null, answered: false, waitedMins: 0 };
+
+  const { data, error } = await supabase
+    .from("cs_fb_inbox")
+    .select("data")
+    .eq("id", convId)
+    .maybeSingle();
+  if (error || !data) return { kind: null, answered: false, waitedMins: 0 };
+
+  const d = (data as { data: { messages?: Msg[]; intent?: string } }).data;
+  const messages = Array.isArray(d?.messages) ? d.messages : [];
+  const firstCust = messages.find((m) => m.from === "customer" && typeof m.at === "number");
+  const reply = messages.find(
+    (m) => m.from === "cs" && typeof m.at === "number" && m.at! > (firstCust?.at ?? 0),
+  );
+
+  const waitedMins =
+    firstCust?.at && reply?.at ? Math.round((reply.at - firstCust.at) / 60000) : 0;
+
+  return {
+    kind: KIND[d?.intent ?? ""] ?? null,
+    answered: Boolean(reply),
+    waitedMins,
+  };
+}
+
 export async function saveCase(
   convId: string,
   patch: { status?: CaseStatus; owner?: string; note?: string },

@@ -26,6 +26,7 @@ const LANGS: { key: Lang; label: string }[] = [
 const NAV: { label: string; cn: string; active: boolean; href?: string }[] = [
   { label: "Inbox", cn: "收件箱", active: true },
   { label: "Cases", cn: "个案", active: false, href: "/cases" },
+  { label: "My points", cn: "我的分数", active: false, href: "/me" },
   { label: "Scoreboard", cn: "计分板", active: false, href: "/scoreboard" },
   { label: "Answers", cn: "回复库", active: false },
 ];
@@ -89,12 +90,19 @@ export default function Page() {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
   const [checkingPin, setCheckingPin] = useState(false);
+  const [mode, setMode] = useState<"staff" | "pin">("pin");
+  const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
+  const [staffId, setStaffId] = useState("");
+  const [me, setMe] = useState<{ id: string; name: string; role: string } | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/session", { cache: "no-store" });
         const s = await res.json();
+        setMode(s.mode ?? "pin");
+        setPeople(s.people ?? []);
+        setMe(s.staff ?? null);
         if (s.required && !s.signedIn) {
           setGate("locked");
           return;
@@ -110,20 +118,26 @@ export default function Page() {
   async function submitPin(e: React.FormEvent) {
     e.preventDefault();
     if (!pin.trim() || checkingPin) return;
+    if (mode === "staff" && !staffId) {
+      setPinError("Pick your name first.");
+      return;
+    }
     setCheckingPin(true);
     setPinError(null);
     try {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin, staffId }),
       });
-      if (res.ok) {
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body.ok) {
+        setMe(body.staff ?? null);
         setGate("open");
         setPin("");
         load();
       } else {
-        setPinError("That PIN isn't right. Try again.");
+        setPinError(body.error ?? "That PIN isn't right. Try again.");
       }
     } catch {
       setPinError("Could not reach the server.");
@@ -197,8 +211,29 @@ export default function Page() {
             </div>
           </div>
 
+          {mode === "staff" && (
+            <>
+              <label className="mb-1.5 block text-[13px] font-medium">Who are you? 你是谁</label>
+              <select
+                value={staffId}
+                onChange={(e) => {
+                  setStaffId(e.target.value);
+                  setPinError(null);
+                }}
+                className="mb-4 w-full rounded-xl border-2 border-[var(--ac-line)] bg-neutral-50 px-4 py-3 text-[14px] outline-none focus:border-neutral-400 focus:bg-white"
+              >
+                <option value="">Pick your name…</option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+
           <label className="mb-1.5 block text-[13px] font-medium">
-            Enter PIN 输入密码
+            {mode === "staff" ? "Your PIN 你的密码" : "Enter PIN 输入密码"}
           </label>
           <input
             type="password"
@@ -314,11 +349,23 @@ export default function Page() {
             </span>
           )}
 
+          {me?.role === "admin" && (
+            <Link
+              href="/admin"
+              className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-neutral-600 hover:bg-neutral-100"
+            >
+              Admin
+            </Link>
+          )}
           <div className="flex items-center gap-2 border-l border-[var(--ac-line)] pl-3">
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 text-[11px] font-semibold text-neutral-700">
-              CP
+              {(me?.name ?? AGENT.name)
+                .split(" ")
+                .map((w) => w[0])
+                .slice(0, 2)
+                .join("")}
             </div>
-            <span className="text-[12px] font-medium">{AGENT.name}</span>
+            <span className="text-[12px] font-medium">{me?.name ?? AGENT.name}</span>
           </div>
         </div>
       </header>

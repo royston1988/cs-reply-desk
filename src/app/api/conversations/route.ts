@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE, isSignedIn, pinRequired } from "@/lib/auth";
+import { requireUser } from "@/lib/guard";
 import { fetchArchive } from "@/lib/cs-archive";
 import { fetchConversations } from "@/lib/facebook";
 
@@ -16,24 +15,11 @@ export const dynamic = "force-dynamic";
  * Nothing is returned at all until the visitor has passed the PIN gate.
  */
 export async function GET() {
-  // Fail safe. If no PIN is configured there is no lock, so real customer
-  // conversations must never be served — only the samples. Forgetting to set
-  // APP_PIN once already put 124 real conversations on the open internet;
-  // this makes that impossible rather than merely unlikely.
-  if (!pinRequired()) {
-    return NextResponse.json(
-      {
-        connected: false,
-        source: "sample",
-        error: "No PIN is set, so real conversations are switched off.",
-        conversations: [],
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
-  const jar = await cookies();
-  if (!isSignedIn(jar.get(SESSION_COOKIE)?.value)) {
+  // One door for everything that returns real customer data. If no lock is
+  // configured at all the answer is still no — forgetting to set a lock must
+  // never mean "let everyone in".
+  const gate = await requireUser();
+  if (!gate.ok) {
     return NextResponse.json(
       { connected: false, source: "locked", conversations: [] },
       { status: 401, headers: { "Cache-Control": "no-store" } },
